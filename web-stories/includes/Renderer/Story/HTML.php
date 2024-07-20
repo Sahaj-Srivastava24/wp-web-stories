@@ -282,28 +282,22 @@ class HTML {
 	protected function print_analytics( string $content ): string {
     ob_start();
 
-    // Fetch the ad configuration data
     $ad_config = $this->fetch_ad_config_data();
+    $ad_config_json = json_encode($ad_config);
+    echo "<script>
+        console.log('Ad Config:', $ad_config_json);
+    </script>";
+    
     $blacklisted = $ad_config['adConfig']['blacklisted'] === "true";
     $ad_units = $ad_config['adUnits']['adSpotDemandSourceMap'];
-
-    // Check the primary demand source for quizzopWatchAdRewarded
     $quizzop_watch_ad_rewarded = $ad_units['quizzopWatchAdRewarded']['primaryDemandSource'];
 
-    /**
-     * Fires before the closing <amp-story> tag.
-     *
-     * Can be used to print <amp-analytics> configuration.
-     *
-     * @since 1.1.0
-     */
     do_action( 'web_stories_print_analytics' );
 
     if ( !$blacklisted ) {
-        // Define your arguments
-        if ($quizzop_watch_ad_rewarded === 'adsenseH5Rewarded') {
-            $data_ad_client = 'value1';
-            $data_ad_slot = 'value2';
+      if ($quizzop_watch_ad_rewarded === 'adsenseH5Rewarded') {
+            $adsense_client_id = $ad_config['adConfig']['adsenseClientId'];
+            list($data_ad_client, $data_ad_slot) = explode('|', $adsense_client_id);
             do_action( 'web_stories_print_adsense', $data_ad_client, $data_ad_slot );
         } elseif ($quizzop_watch_ad_rewarded === 'gamDisplayRewarded') {
             $data_ad_Slot = "/22447375539/4239/4239_300x250";

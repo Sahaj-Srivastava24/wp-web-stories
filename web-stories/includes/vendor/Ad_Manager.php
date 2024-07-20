@@ -83,9 +83,8 @@ class Ad_Manager extends Service_Base implements HasRequirements {
      * @param string $data_slot The ad slot ID to be used.
      */
     public function print_ad_manager_tag( string $data_slot ): void {
-        $enabled = $this->is_enabled();
-
-        if ( ! $enabled || ! $data_slot ) {
+        if ( ! $data_slot ) {
+            echo "<script>console.log('WP-WEB-STORIES:: dataSlot is not found for gam');</script>";
             return;
         }
 

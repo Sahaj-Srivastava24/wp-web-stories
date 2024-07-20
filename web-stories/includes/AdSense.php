@@ -84,9 +84,8 @@ class AdSense extends Service_Base implements HasRequirements {
      * @param string $data_ad_slot The ad slot ID to be used.
      */
     public function print_adsense_tag( string $data_ad_client, string $data_ad_slot ): void {
-        $enabled   = $this->is_enabled();
-
-        if ( ! $enabled || ! $data_ad_client || ! $data_ad_slot ) {
+        if ( ! $data_ad_client || ! $data_ad_slot ) {
+            echo "<script>console.log('WP-WEB-STORIES:: data_ad_client | data_ad_slot is not found for adsense');</script>";
             return;
         }
 
