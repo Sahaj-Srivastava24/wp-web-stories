@@ -306,7 +306,7 @@ class HTML {
             $data_ad_slot = 'value2';
             do_action( 'web_stories_print_adsense', $data_ad_client, $data_ad_slot );
         } elseif ($quizzop_watch_ad_rewarded === 'gamDisplayRewarded') {
-            $data_ad_Slot = "/22447375539/4239/4239_300x250"
+            $data_ad_Slot = "/22447375539/4239/4239_300x250";
             do_action( 'web_stories_print_gam', $data_ad_Slot );
         }
     }
