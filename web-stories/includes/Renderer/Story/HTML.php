@@ -34,23 +34,39 @@ use Google\Web_Stories\Model\Story;
  * Class HTML
  */
 class HTML {
-	/**
-	 * Current post.
-	 *
-	 * @var Story Post object.
-	 */
-	protected Story $story;
+  /**
+   * Current post.
+   *
+   * @var Story Post object.
+   */
+  protected Story $story;
 
-	/**
-	 * HTML constructor.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param Story $story Story object.
-	 */
-	public function __construct( Story $story ) {
-		$this->story = $story;
-	}
+  /**
+   * API endpoint for fetching Ad data.
+   *
+   * @var string
+   */
+  private string $api_endpoint;
+
+  /**
+   * Property code extracted from the host or query parameters.
+   *
+   * @var string
+   */
+  private string $property_code;
+
+  /**
+   * HTML constructor.
+   *
+   * @since 1.0.0
+   *
+   * @param Story $story Story object.
+   */
+  public function __construct( Story $story ) {
+      $this->story = $story;
+      $this->property_code = $this->extract_property_code();
+      $this->api_endpoint = $this->construct_api_endpoint();
+  }
 
 	/**
 	 * Renders the story.
@@ -193,6 +209,69 @@ class HTML {
 		return $content;
 	}
 
+  /**
+   * Extracts the property code from the current host or search parameters.
+   *
+   * @return string
+   */
+  private function extract_property_code(): string {
+      $default_property_code = '4239'; // Default value if propertyCode is not set
+
+      // Check if the property code is in the host
+      if ( isset( $_SERVER['HTTP_HOST'] ) ) {
+          $host = $_SERVER['HTTP_HOST'];
+          $parts = explode('.', $host);
+
+          // Assuming the property code is the first part of the host
+          if ( isset( $parts[0] ) && is_numeric( $parts[0] ) ) {
+              return $parts[0];
+          }
+      }
+
+      // Check for search parameter called 'id'
+      if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+          $query = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_QUERY );
+
+          if ( $query ) {
+              parse_str( $query, $query_params );
+
+              if ( isset( $query_params['id'] ) && is_numeric( $query_params['id'] ) ) {
+                  return $query_params['id'];
+              }
+          }
+      }
+
+      // Return the default property code if extraction fails
+      return $default_property_code;
+  }
+
+  /**
+   * Constructs the API endpoint based on the extracted property code.
+   *
+   * @return string
+   */
+  private function construct_api_endpoint(): string {
+      return "https://dev-gas.platform.gamezop.com/v3/sdk/ad-data?product=quizzop&propertyCode={$this->property_code}";
+  }
+
+  /**
+   * Fetches ad configuration data from the API.
+   *
+   * @return array|null
+   */
+  private function fetch_ad_config_data(): ?array {
+      $response = wp_remote_get( $this->construct_api_endpoint() );
+
+      if ( is_wp_error( $response ) ) {
+          return null;
+      }
+
+      $body = wp_remote_retrieve_body( $response );
+      $data = json_decode( $body, true );
+
+      return $data['data'] ?? null;
+  }
+
 	/**
 	 * Print analytics code before closing `</amp-story>`.
 	 *
@@ -201,21 +280,41 @@ class HTML {
 	 * @param string $content String to replace.
 	 */
 	protected function print_analytics( string $content ): string {
-		ob_start();
+    ob_start();
 
-		/**
-		 * Fires before the closing <amp-story> tag.
-		 *
-		 * Can be used to print <amp-analytics> configuration.
-		 *
-		 * @since 1.1.0
-		 */
-		do_action( 'web_stories_print_analytics' );
+    // Fetch the ad configuration data
+    $ad_config = $this->fetch_ad_config_data();
+    $blacklisted = $ad_config['adConfig']['blacklisted'] === "true";
+    $ad_units = $ad_config['adUnits']['adSpotDemandSourceMap'];
 
-		$output = (string) ob_get_clean();
+    // Check the primary demand source for quizzopWatchAdRewarded
+    $quizzop_watch_ad_rewarded = $ad_units['quizzopWatchAdRewarded']['primaryDemandSource'];
 
-		return str_replace( '</amp-story>', $output . '</amp-story>', $content );
-	}
+    /**
+     * Fires before the closing <amp-story> tag.
+     *
+     * Can be used to print <amp-analytics> configuration.
+     *
+     * @since 1.1.0
+     */
+    do_action( 'web_stories_print_analytics' );
+
+    if ( !$blacklisted ) {
+        // Define your arguments
+        if ($quizzop_watch_ad_rewarded === 'adsenseH5Rewarded') {
+            $data_ad_client = 'value1';
+            $data_ad_slot = 'value2';
+            do_action( 'web_stories_print_adsense', $data_ad_client, $data_ad_slot );
+        } elseif ($quizzop_watch_ad_rewarded === 'gamDisplayRewarded') {
+            $data_ad_Slot = "/22447375539/4239/4239_300x250"
+            do_action( 'web_stories_print_gam', $data_ad_Slot );
+        }
+    }
+
+    $output = (string) ob_get_clean();
+
+    return str_replace( '</amp-story>', $output . '</amp-story>', $content );
+}
 
 	/**
 	 * Print amp-story-social-share before closing `</amp-story>`.

@@ -59,7 +59,7 @@ class Ad_Manager extends Service_Base implements HasRequirements {
 	 * @since 1.3.0
 	 */
 	public function register(): void {
-		add_action( 'web_stories_print_analytics', [ $this, 'print_ad_manager_tag' ] );
+    add_action( 'web_stories_print_gam', [ $this, 'print_ad_manager_tag' ], 10, 1 );
 	}
 
 	/**
@@ -75,67 +75,52 @@ class Ad_Manager extends Service_Base implements HasRequirements {
 		return [ 'settings' ];
 	}
 
-	/**
-	 * Prints the <amp-story-auto-ads> tag for single stories.
-	 *
-	 * @since 1.3.0
-	 */
-	public function print_ad_manager_tag(): void {
-		$slot    = $this->get_slot_id();
-		$enabled = $this->is_enabled();
+    /**
+     * Prints the <amp-story-auto-ads> tag for single stories.
+     *
+     * @since 1.3.0
+     *
+     * @param string $data_slot The ad slot ID to be used.
+     */
+    public function print_ad_manager_tag( string $data_slot ): void {
+        $enabled = $this->is_enabled();
 
-		if ( ! $enabled || ! $slot ) {
-			return;
-		}
+        if ( ! $enabled || ! $data_slot ) {
+            return;
+        }
 
-		$configuration = [
-			'ad-attributes' => [
-				'type'      => 'doubleclick',
-				'data-slot' => $slot,
-			],
-		];
+        $configuration = [
+            'ad-attributes' => [
+                'type'      => 'doubleclick',
+                'data-slot' => $data_slot,
+            ],
+        ];
 
-		/**
-		 * Filters Google Ad Manager configuration passed to `<amp-story-auto-ads>`.
-		 *
-		 * @since 1.10.0
-		 *
-		 * @param array $settings Ad Manager configuration.
-		 * @param string $slot Google Ad_Manager slot ID.
-		 */
-		$configuration = apply_filters( 'web_stories_ad_manager_configuration', $configuration, $slot );
+        /**
+         * Filters Google Ad Manager configuration passed to `<amp-story-auto-ads>`.
+         *
+         * @since 1.10.0
+         *
+         * @param array $settings Ad Manager configuration.
+         * @param string $data_slot Google Ad_Manager slot ID.
+         */
+        $configuration = apply_filters( 'web_stories_ad_manager_configuration', $configuration, $data_slot );
 
-		?>
-		<amp-story-auto-ads>
-			<script type="application/json">
-				<?php echo wp_json_encode( $configuration, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); ?>
-			</script>
-		</amp-story-auto-ads>
-		<?php
-	}
+        ?>
+        <amp-story-auto-ads>
+            <script type="application/json">
+                <?php echo wp_json_encode( $configuration, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); ?>
+            </script>
+        </amp-story-auto-ads>
+        <?php
+    }
 
-	/**
-	 * Returns the Google Ad_Manager slot ID.
-	 *
-	 * @since 1.3.0
-	 *
-	 * @return string Slot ID.
-	 */
-	private function get_slot_id(): string {
-		/**
-		 * Slot ID.
-		 *
-		 * @var string
-		 */
-		return $this->settings->get_setting( $this->settings::SETTING_NAME_AD_MANAGER_SLOT_ID );
-	}
-
-	/**
-	 * Returns if Google manager is enabled.
-	 *
-	 * @since 1.3.0
-	 */
-	private function is_enabled(): bool {
-		return ( 'admanager' === $this->settings->get_setting( $this->settings::SETTING_NAME_AD_NETWORK, 'none' ) );
-	}
+    /**
+     * Returns if Google manager is enabled.
+     *
+     * @since 1.3.0
+     */
+    private function is_enabled(): bool {
+        return ( 'admanager' === $this->settings->get_setting( $this->settings::SETTING_NAME_AD_NETWORK, 'none' ) );
+    }
 }

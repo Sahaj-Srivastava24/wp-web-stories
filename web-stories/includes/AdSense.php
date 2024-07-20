@@ -42,21 +42,7 @@ class AdSense extends Service_Base implements HasRequirements {
     private Settings $settings;
 
     /**
-     * API endpoint for fetching AdSense data.
-     *
-     * @var string
-     */
-    private string $api_endpoint;
-
-    /**
-     * Property code extracted from the host or query parameters.
-     *
-     * @var string
-     */
-    private string $property_code;
-
-    /**
-     * Analytics constructor.
+     * AdSense constructor.
      *
      * @since 1.12.0
      *
@@ -65,8 +51,6 @@ class AdSense extends Service_Base implements HasRequirements {
      */
     public function __construct( Settings $settings ) {
         $this->settings = $settings;
-        $this->property_code = $this->extract_property_code();
-        $this->api_endpoint = $this->construct_api_endpoint();
     }
 
     /**
@@ -75,7 +59,7 @@ class AdSense extends Service_Base implements HasRequirements {
      * @since 1.3.0
      */
     public function register(): void {
-        add_action( 'web_stories_print_analytics', [ $this, 'print_adsense_tag' ] );
+        add_action( 'web_stories_print_adsense', [ $this, 'print_adsense_tag' ], 10, 2 );
     }
 
     /**
@@ -92,154 +76,33 @@ class AdSense extends Service_Base implements HasRequirements {
     }
 
     /**
-     * Extracts the property code from the current host or search parameters.
-     *
-     * @return string
-     */
-    private function extract_property_code(): string {
-        $default_property_code = '4239'; // Default value if propertyCode is not set
-
-        // Check if the property code is in the host
-        if ( isset( $_SERVER['HTTP_HOST'] ) ) {
-            $host = $_SERVER['HTTP_HOST'];
-            $parts = explode('.', $host);
-
-            // Assuming the property code is the first part of the host
-            if ( isset( $parts[0] ) && is_numeric( $parts[0] ) ) {
-                return $parts[0];
-            }
-        }
-
-        // Check for search parameter called 'id'
-        if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-            $query = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_QUERY );
-
-            if ( $query ) {
-                parse_str( $query, $query_params );
-
-                if ( isset( $query_params['id'] ) && is_numeric( $query_params['id'] ) ) {
-                    return $query_params['id'];
-                }
-            }
-        }
-
-        // Return the default property code if extraction fails
-        return $default_property_code;
-    }
-
-    /**
-     * Constructs the API endpoint based on the extracted property code.
-     *
-     * @return string
-     */
-    private function construct_api_endpoint(): string {
-        return "https://gas.platform.gamezop.com/v3/sdk/ad-data?product=quizzop&propertyCode={$this->property_code}";
-    }
-
-    /**
-     * Fetches AdSense data from the API.
-     *
-     * @return array|null
-     */
-    private function fetch_adsense_data(): ?array {
-        $response = wp_remote_get( $this->api_endpoint );
-
-        if ( is_wp_error( $response ) ) {
-            return null;
-        }
-
-        $body = wp_remote_retrieve_body( $response );
-        $data = json_decode( $body, true );
-
-        if ( ! isset( $data['data']['adConfig']['adsenseClientId'] ) ) {
-            return null;
-        }
-
-        $adsense_client_id = $data['data']['adConfig']['adsenseClientId'];
-        $parts = explode( '|', $adsense_client_id );
-
-        if ( count( $parts ) !== 2 ) {
-            return null;
-        }
-
-        return [
-            'client' => $parts[0],
-            'slot'   => $parts[1],
-        ];
-    }
-
-    /**
      * Prints the <amp-story-auto-ads> tag for single stories.
      *
      * @since 1.3.0
+     *
+     * @param string $data_ad_client The ad client ID to be used.
+     * @param string $data_ad_slot The ad slot ID to be used.
      */
-    public function print_adsense_tag(): void {
-        $publisher = $this->get_publisher_id();
-        $slot      = $this->get_slot_id();
+    public function print_adsense_tag( string $data_ad_client, string $data_ad_slot ): void {
         $enabled   = $this->is_enabled();
 
-        if ( ! $enabled || ! $publisher || ! $slot ) {
+        if ( ! $enabled || ! $data_ad_client || ! $data_ad_slot ) {
             return;
         }
-
-        // Fetch AdSense data from the API
-        $adsense_data = $this->fetch_adsense_data();
-
-        if ( ! $adsense_data ) {
-            return;
-        }
-
-        $data_ad_client = esc_attr( $adsense_data['client'] );
-        $data_ad_slot   = esc_attr( $adsense_data['slot'] );
 
         ?>
         <amp-story-auto-ads>
             <script type="application/json">
                 {
-                    "version": "v0.4",
-                    "propertyCode": "<?php echo $this->property_code; ?>",
                     "ad-attributes": {
                         "type": "adsense",
-                        "data-ad-client": "<?php echo $data_ad_client; ?>",
-                        "data-ad-slot": "<?php echo $data_ad_slot; ?>"
+                        "data-ad-client": "<?php echo esc_attr( $data_ad_client ); ?>",
+                        "data-ad-slot": "<?php echo esc_attr( $data_ad_slot ); ?>"
                     }
                 }
             </script>
         </amp-story-auto-ads>
         <?php
-    }
-
-    /**
-     * Returns the Google AdSense publisher ID.
-     *
-     * @since 1.3.0
-     *
-     * @return string Publisher ID.
-     */
-    private function get_publisher_id(): string {
-        /**
-         * Publisher ID.
-         *
-         * @var string $publisher_id
-         */
-        $publisher_id = $this->settings->get_setting( $this->settings::SETTING_NAME_ADSENSE_PUBLISHER_ID );
-        return $publisher_id;
-    }
-
-    /**
-     * Returns the Google AdSense slot ID.
-     *
-     * @since 1.3.0
-     *
-     * @return string Slot ID.
-     */
-    private function get_slot_id(): string {
-        /**
-         * Slot ID.
-         *
-         * @var string
-         */
-        return $this->settings->get_setting( $this->settings::SETTING_NAME_ADSENSE_SLOT_ID );
     }
 
     /**
