@@ -299,7 +299,7 @@ class HTML {
             $adsense_client_id = $ad_config['adConfig']['adsenseClientId'];
             list($data_ad_client, $data_ad_slot) = explode('|', $adsense_client_id);
             do_action( 'web_stories_print_adsense', $data_ad_client, $data_ad_slot );
-        } elseif ($quizzop_watch_ad_rewarded === 'gamDisplayRewarded') {
+        } elseif ($quizzop_watch_ad_rewarded === 'gamRewarded') {
             $data_ad_Slot = "/22447375539/4239/4239_300x250";
             do_action( 'web_stories_print_gam', $data_ad_Slot );
         }
